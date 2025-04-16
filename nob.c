@@ -12,6 +12,7 @@ main(int argc, const char **argv)
 	Nob_Cmd cmd = { 0 };
 	nob_cmd_append(&cmd, "cc", "-std=c17");
 	nob_cmd_append(&cmd, "-g");
+	nob_cmd_append(&cmd, "-pedantic");
 	nob_cmd_append(&cmd, "-Wall", "-Wextra");
 	nob_cmd_append(&cmd, "-Werror");
 	nob_cmd_append(&cmd, "-o", "sample");
