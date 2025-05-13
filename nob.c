@@ -45,8 +45,33 @@ sample(Nob_Cmd *cmd)
 {
 	cc(cmd);
 	cflags(cmd);
-	nob_cmd_append(cmd, "-o", "sample");
-	nob_cmd_append(cmd, "sample.c");
+	nob_cc_output(cmd, "sample");
+	nob_cc_inputs(cmd, "sample.c");
+	return nob_cmd_run_sync_and_reset(cmd);
+}
+
+static bool
+cc_dot_c(Nob_Cmd *cmd)
+{
+	cc(cmd);
+	cflags(cmd);
+	nob_cmd_append(cmd, "-fsyntax-only");
+	nob_cc_inputs(cmd, "cc.c");
+	return nob_cmd_run_sync_and_reset(cmd);
+}
+
+static bool
+cc_test(Nob_Cmd *cmd)
+{
+	cc(cmd);
+	cflags(cmd);
+	nob_cc_output(cmd, "cc-test");
+	nob_cc_inputs(cmd, "sb.c", "cc.c", "cc-test.c");
+	if (!nob_cmd_run_sync_and_reset(cmd)) {
+		return false;
+	}
+
+	nob_cmd_append(cmd, "./cc-test");
 	return nob_cmd_run_sync_and_reset(cmd);
 }
 
@@ -97,7 +122,10 @@ main(int argc, char **argv)
 
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
-	if (!sample(cmd) || !xlib(cmd) || !sb_dot_c(cmd) || !sb_test(cmd) || !da_test(cmd)) {
+	if (!sample(cmd) || !xlib(cmd) ||
+	    !sb_dot_c(cmd) || !sb_test(cmd) ||
+	    !cc_dot_c(cmd) || !cc_test(cmd) ||
+	    !da_test(cmd)) {
 		exit(EXIT_FAILURE);
 	}
 }
