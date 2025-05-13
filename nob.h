@@ -1,4 +1,4 @@
-/* nob - v1.19.0 - Public Domain - https://github.com/tsoding/nob.h
+/* nob - v1.20.2 - Public Domain - https://github.com/tsoding/nob.h
 
    This library is the next generation of the [NoBuild](https://github.com/tsoding/nobuild) idea.
 
@@ -388,6 +388,17 @@ Nob_Fd nob_fd_open_for_read(const char *path);
 Nob_Fd nob_fd_open_for_write(const char *path);
 void nob_fd_close(Nob_Fd fd);
 
+
+// TODO: Nob_File name may lead to confusion. Should be change.
+typedef struct {
+    Nob_Fd fd;
+    const char *path;
+} Nob_File;
+
+Nob_File nob_file_open_for_read(const char *path);
+Nob_File nob_file_open_for_write(const char *path);
+void nob_file_close(Nob_File file);
+
 typedef struct {
     Nob_Proc *items;
     size_t count;
@@ -403,7 +414,7 @@ bool nob_procs_wait_and_reset(Nob_Procs *procs);
 // Append a new process to procs array and if procs.count reaches max_procs_count call nob_procs_wait_and_reset() on it
 bool nob_procs_append_with_flush(Nob_Procs *procs, Nob_Proc proc, size_t max_procs_count);
 
-// A command - the main workhorse of Nob. Nob is all about building commands an running them
+// A command - the main workhorse of Nob. Nob is all about building commands and running them
 typedef struct {
     const char **items;
     size_t count;
@@ -429,11 +440,18 @@ typedef struct {
     Nob_Fd *fderr;
 } Nob_Cmd_Redirect;
 
+typedef struct {
+    Nob_File *fin;
+    Nob_File *fout;
+    Nob_File *ferr;
+} Nob_Cmd_Redirect_File;
+
 // Render a string representation of a command into a string builder. Keep in mind the the
 // string builder is not NULL-terminated by default. Use nob_sb_append_null if you plan to
 // use it as a C string.
 void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render);
 
+// TODO: implement C++ support for nob.h
 #define nob_cmd_append(cmd, ...) \
     nob_da_append_many(cmd, \
                        ((const char*[]){__VA_ARGS__}), \
@@ -452,6 +470,7 @@ void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render);
 Nob_Proc nob_cmd_run_async_and_reset(Nob_Cmd *cmd);
 // Run redirected command asynchronously
 Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect);
+Nob_Proc nob_cmd_run_async_redirect_file(Nob_Cmd cmd, Nob_Cmd_Redirect_File redirect);
 // Run redirected command asynchronously and set cmd.count to 0 and close all the opened files
 Nob_Proc nob_cmd_run_async_redirect_and_reset(Nob_Cmd *cmd, Nob_Cmd_Redirect redirect);
 
@@ -462,8 +481,11 @@ bool nob_cmd_run_sync(Nob_Cmd cmd);
 bool nob_cmd_run_sync_and_reset(Nob_Cmd *cmd);
 // Run redirected command synchronously
 bool nob_cmd_run_sync_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect);
+bool nob_cmd_run_sync_redirect_file(Nob_Cmd, Nob_Cmd_Redirect_File redirect);
 // Run redirected command synchronously and set cmd.count to 0 and close all the opened files
 bool nob_cmd_run_sync_redirect_and_reset(Nob_Cmd *cmd, Nob_Cmd_Redirect redirect);
+// Run redirected command synchronously and set cmd.count to 0 and close all the opened files
+bool nob_cmd_run_sync_redirect_file_and_reset(Nob_Cmd *cmd, Nob_Cmd_Redirect_File redirect);
 
 #ifndef NOB_TEMP_CAPACITY
 #define NOB_TEMP_CAPACITY (8*1024*1024)
@@ -485,9 +507,54 @@ int nob_file_exists(const char *file_path);
 const char *nob_get_current_dir_temp(void);
 bool nob_set_current_dir(const char *path);
 
-// TODO: add MinGW support for Go Rebuild Urself™ Technology
-#ifndef NOB_REBUILD_URSELF
+// TODO: we should probably document somewhere all the compiler we support
+
+// The nob_cc_* macros try to abstract away the specific compiler.
+// They are verify basic and not particularly flexible, but you can redefine them if you need to
+// or not use them at all and create your own abstraction on top of Nob_Cmd.
+
+#ifndef nob_cc
 #  if _WIN32
+#    if defined(__GNUC__)
+#       define nob_cc(cmd) nob_cmd_append(cmd, "cc")
+#    elif defined(__clang__)
+#       define nob_cc(cmd) nob_cmd_append(cmd, "clang")
+#    elif defined(_MSC_VER)
+#       define nob_cc(cmd) nob_cmd_append(cmd, "cl.exe")
+#    endif
+#  else
+#    define nob_cc(cmd) nob_cmd_append(cmd, "cc")
+#  endif
+#endif // nob_cc
+
+#ifndef nob_cc_flags
+#  if defined(_MSC_VER)
+#    define nob_cc_flags(...)  // TODO: Add some cool recommended flags for MSVC (I don't really know any)
+#  else
+#    define nob_cc_flags(cmd) nob_cmd_append(cmd, "-Wall", "-Wextra")
+#  endif
+#endif // nob_cc_output
+
+#ifndef nob_cc_output
+#  if defined(_MSC_VER)
+#    define nob_cc_output(cmd, output_path) nob_cmd_append(cmd, nob_temp_sprintf("/Fe:%s", (output_path)))
+#  else
+#    define nob_cc_output(cmd, output_path) nob_cmd_append(cmd, "-o", (output_path))
+#  endif
+#endif // nob_cc_output
+
+#ifndef nob_cc_inputs
+#  define nob_cc_inputs(cmd, ...) nob_cmd_append(cmd, __VA_ARGS__)
+#endif // nob_cc_inputs
+
+// TODO: add MinGW support for Go Rebuild Urself™ Technology and all the nob_cc_* macros above
+//   Musializer contributors came up with a pretty interesting idea of an optional prefix macro which could be useful for
+//   MinGW support:
+//   https://github.com/tsoding/musializer/blob/b7578cc76b9ecb573d239acc9ccf5a04d3aba2c9/src_build/nob_win64_mingw.c#L3-L9
+// TODO: Maybe instead NOB_REBUILD_URSELF macro, the Go Rebuild Urself™ Technology should use the
+//   user defined nob_cc_* macros instead?
+#ifndef NOB_REBUILD_URSELF
+#  if defined(_WIN32)
 #    if defined(__GNUC__)
 #       define NOB_REBUILD_URSELF(binary_path, source_path) "gcc", "-o", binary_path, source_path
 #    elif defined(__clang__)
@@ -522,7 +589,7 @@ bool nob_set_current_dir(const char *path);
 //   do not recommend since the whole idea of NoBuild is to keep the process of bootstrapping
 //   as simple as possible and doing all of the actual work inside of ./nob)
 //
-void nob__go_rebuild_urself(int argc, const char **argv, const char *source_path, ...);
+void nob__go_rebuild_urself(int argc, char **argv, const char *source_path, ...);
 #define NOB_GO_REBUILD_URSELF(argc, argv) nob__go_rebuild_urself(argc, argv, __FILE__, NULL)
 // Sometimes your nob.c includes additional files, so you want the Go Rebuild Urself™ Technology to check
 // if they also were modified and rebuild nob.c accordingly. For that we have NOB_GO_REBUILD_URSELF_PLUS():
@@ -684,7 +751,7 @@ char *nob_win32_error_message(DWORD err) {
 #endif // _WIN32
 
 // The implementation idea is stolen from https://github.com/zhiayang/nabs
-void nob__go_rebuild_urself(int argc, const char **argv, const char *source_path, ...)
+void nob__go_rebuild_urself(int argc, char **argv, const char *source_path, ...)
 {
     const char *binary_path = nob_shift(argv, argc);
 #ifdef _WIN32
@@ -837,20 +904,8 @@ void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render)
     }
 }
 
-Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
+static Nob_Proc nob__spawn_with_pipe(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
 {
-    if (cmd.count < 1) {
-        nob_log(NOB_ERROR, "Could not run empty command");
-        return NOB_INVALID_PROC;
-    }
-
-    Nob_String_Builder sb = {0};
-    nob_cmd_render(cmd, &sb);
-    nob_sb_append_null(&sb);
-    nob_log(NOB_INFO, "CMD: %s", sb.items);
-    nob_sb_free(sb);
-    memset(&sb, 0, sizeof(sb));
-
 #ifdef _WIN32
     // https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
@@ -876,7 +931,7 @@ Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
     nob_sb_free(sb);
 
     if (!bSuccess) {
-        nob_log(NOB_ERROR, "Could not create child process: %s", nob_win32_error_message(GetLastError()));
+        nob_log(NOB_ERROR, "Could not create child process for %s: %s", cmd.items[0], nob_win32_error_message(GetLastError()));
         return NOB_INVALID_PROC;
     }
 
@@ -919,7 +974,7 @@ Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
         nob_cmd_append(&cmd_null, NULL);
 
         if (execvp(cmd.items[0], (char * const*) cmd_null.items) < 0) {
-            nob_log(NOB_ERROR, "Could not exec child process: %s", strerror(errno));
+            nob_log(NOB_ERROR, "Could not exec child process for %s: %s", cmd.items[0], strerror(errno));
             exit(1);
         }
         NOB_UNREACHABLE("nob_cmd_run_async_redirect");
@@ -927,6 +982,60 @@ Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
 
     return cpid;
 #endif
+}
+
+Nob_Proc nob_cmd_run_async_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
+{
+    if (cmd.count < 1) {
+        nob_log(NOB_ERROR, "Could not run empty command");
+        return NOB_INVALID_PROC;
+    }
+
+    Nob_String_Builder sb = {0};
+    nob_cmd_render(cmd, &sb);
+    nob_sb_append_null(&sb);
+    nob_log(NOB_INFO, "CMD: %s", sb.items);
+    nob_sb_free(sb);
+    memset(&sb, 0, sizeof(sb));
+
+    return nob__spawn_with_pipe(cmd, redirect);
+}
+
+Nob_Proc nob_cmd_run_async_redirect_file(Nob_Cmd cmd, Nob_Cmd_Redirect_File redirect)
+{
+    if (cmd.count < 1) {
+        nob_log(NOB_ERROR, "Could not run empty command");
+        return NOB_INVALID_PROC;
+    }
+
+    Nob_String_Builder sb = {0};
+    nob_cmd_render(cmd, &sb);
+    if (redirect.fin && redirect.fin->path) {
+        nob_sb_appendf(&sb, " < %s", redirect.fin->path);
+    }
+    if (redirect.fout && redirect.fout->path) {
+        nob_sb_appendf(&sb, " > %s", redirect.fout->path);
+    }
+    if (redirect.ferr && redirect.ferr->path) {
+        nob_sb_appendf(&sb, " 2> %s", redirect.ferr->path);
+    }
+    nob_sb_append_null(&sb);
+    nob_log(NOB_INFO, "CMD: %s", sb.items);
+    nob_sb_free(sb);
+    memset(&sb, 0, sizeof(sb));
+
+    Nob_Cmd_Redirect fds = { 0 };
+    if (redirect.fin) {
+        fds.fdin = &redirect.fin->fd;
+    }
+    if (redirect.fout) {
+        fds.fdout = &redirect.fout->fd;
+    }
+    if (redirect.ferr) {
+        fds.fderr = &redirect.ferr->fd;
+    }
+
+    return nob__spawn_with_pipe(cmd, fds);
 }
 
 Nob_Proc nob_cmd_run_async_and_reset(Nob_Cmd *cmd)
@@ -1032,6 +1141,28 @@ void nob_fd_close(Nob_Fd fd)
 #endif // _WIN32
 }
 
+Nob_File nob_file_open_for_read(const char *path)
+{
+    Nob_File file = { 0 };
+    file.path = path;
+    file.fd = nob_fd_open_for_read(path);
+    return file;
+}
+
+Nob_File nob_file_open_for_write(const char *path)
+{
+    Nob_File file = { 0 };
+    file.path = path;
+    file.fd = nob_fd_open_for_write(path);
+    return file;
+}
+
+void nob_file_close(Nob_File file)
+{
+    nob_fd_close(file.fd);
+    file.path = NULL;
+}
+
 bool nob_procs_wait(Nob_Procs procs)
 {
     bool success = true;
@@ -1123,6 +1254,13 @@ bool nob_cmd_run_sync_redirect(Nob_Cmd cmd, Nob_Cmd_Redirect redirect)
     return nob_proc_wait(p);
 }
 
+bool nob_cmd_run_sync_redirect_file(Nob_Cmd cmd, Nob_Cmd_Redirect_File redirect)
+{
+    Nob_Proc p = nob_cmd_run_async_redirect_file(cmd, redirect);
+    if (p == NOB_INVALID_PROC) return false;
+    return nob_proc_wait(p);
+}
+
 bool nob_cmd_run_sync(Nob_Cmd cmd)
 {
     Nob_Proc p = nob_cmd_run_async(cmd);
@@ -1152,6 +1290,29 @@ bool nob_cmd_run_sync_redirect_and_reset(Nob_Cmd *cmd, Nob_Cmd_Redirect redirect
     if (redirect.fderr) {
         nob_fd_close(*redirect.fderr);
         *redirect.fderr = NOB_INVALID_FD;
+    }
+    return p;
+}
+
+bool nob_cmd_run_sync_redirect_file_and_reset(Nob_Cmd *cmd, Nob_Cmd_Redirect_File redirect)
+{
+    const Nob_File NOB_INVALID_FILE = {
+        .fd = NOB_INVALID_FD,
+        .path = NULL,
+    };
+    bool p = nob_cmd_run_sync_redirect_file(*cmd, redirect);
+    cmd->count = 0;
+    if (redirect.fin && redirect.fin->fd) {
+        nob_file_close(*redirect.fin);
+        *redirect.fin = NOB_INVALID_FILE;
+    }
+    if (redirect.fout && redirect.fout->fd) {
+        nob_file_close(*redirect.fout);
+        *redirect.fout = NOB_INVALID_FILE;
+    }
+    if (redirect.ferr && redirect.ferr->fd) {
+        nob_file_close(*redirect.ferr);
+        *redirect.ferr = NOB_INVALID_FILE;
     }
     return p;
 }
@@ -1570,7 +1731,7 @@ int nob_sb_appendf(Nob_String_Builder *sb, const char *fmt, ...)
     nob_da_reserve(sb, sb->count + n + 1);
     char *dest = sb->items + sb->count;
     va_start(args, fmt);
-    vsprintf(dest, fmt, args);
+    vsnprintf(dest, n+1, fmt, args);
     va_end(args);
 
     sb->count += n;
@@ -1948,6 +2109,9 @@ int closedir(DIR *dirp)
 /*
    Revision history:
 
+     1.20.2 (2025-04-24) Report the program name that failed to start up in nob_cmd_run_async_redirect() (By @rexim)
+     1.20.1 (2025-04-16) Use vsnprintf() in nob_sb_appendf() instead of vsprintf() (By @LainLayer)
+     1.20.0 (2025-04-16) Introduce nob_cc(), nob_cc_flags(), nob_cc_inputs(), nob_cc_output() macros (By @rexim)
      1.19.0 (2025-03-25) Add nob_procs_append_with_flush() (By @rexim and @anion155)
      1.18.0 (2025-03-24) Add nob_da_foreach() (By @rexim)
                          Allow file sizes greater than 2GB to be read on windows (By @satchelfrost and @KillerxDBr)
