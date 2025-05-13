@@ -16,11 +16,12 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            cc: gcc
-          - os: ubuntu-latest
-            cc: clang
+        os:
+          - ubuntu-latest
+          - macos-latest
+        cc:
+          - gcc
+          - clang
 
     env:
       CC: ${{ matrix.cc }}
