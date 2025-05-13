@@ -23,6 +23,9 @@ jobs:
         cc:
           - gcc
           - clang
+        include:
+          - os: ubuntu-latest
+            install: sudo apt-get install -y libx11-dev
 
     env:
       CC: ${{ matrix.cc }}
@@ -31,6 +34,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install Dependencies
+      run: ${{ matrix.install }}
     - name: Bootstrap nob
       run: $CC $CFLAGS -o nob nob.c
 
