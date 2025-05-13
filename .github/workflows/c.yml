@@ -3,7 +3,7 @@ name: C
 on:
   push:
     branches:
-      - 'main'
+      - $default-branch
   pull_request:
   workflow_dispatch:
 
