@@ -22,7 +22,10 @@ main(int argc, const char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (argc == 2 && strcmp(argv[1], "run") == 0) {
+	if (argc != 2) {
+		exit(EXIT_SUCCESS);
+	}
+	if (strcmp(argv[1], "run") == 0) {
 		nob_cmd_append(cmd, "./sample");
 		if (!nob_cmd_run_sync_and_reset(cmd)) {
 			exit(EXIT_FAILURE);
