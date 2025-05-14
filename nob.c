@@ -50,6 +50,31 @@ sample(Nob_Cmd *cmd)
 	return nob_cmd_run_sync_and_reset(cmd);
 }
 
+static bool
+sb_dot_c(Nob_Cmd *cmd)
+{
+	cc(cmd);
+	cflags(cmd);
+	nob_cmd_append(cmd, "-fsyntax-only");
+	nob_cc_inputs(cmd, "sb.c");
+	return nob_cmd_run_sync_and_reset(cmd);
+}
+
+static bool
+sb_test(Nob_Cmd *cmd)
+{
+	cc(cmd);
+	cflags(cmd);
+	nob_cc_output(cmd, "sb-test");
+	nob_cc_inputs(cmd, "sb.c", "sb-test.c");
+	if (!nob_cmd_run_sync_and_reset(cmd)) {
+		return false;
+	}
+
+	nob_cmd_append(cmd, "./sb-test");
+	return nob_cmd_run_sync_and_reset(cmd);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -57,7 +82,7 @@ main(int argc, char **argv)
 
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
-	if (!sample(cmd) || !xlib(cmd)) {
+	if (!sample(cmd) || !xlib(cmd) || !sb_dot_c(cmd) || !sb_test(cmd)) {
 		exit(EXIT_FAILURE);
 	}
 }
