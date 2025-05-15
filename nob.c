@@ -75,6 +75,21 @@ sb_test(Nob_Cmd *cmd)
 	return nob_cmd_run_sync_and_reset(cmd);
 }
 
+static bool
+da_test(Nob_Cmd *cmd)
+{
+	cc(cmd);
+	cflags(cmd);
+	nob_cc_output(cmd, "da-test");
+	nob_cc_inputs(cmd, "da.c", "da-test.c");
+	if (!nob_cmd_run_sync_and_reset(cmd)) {
+		return false;
+	}
+
+	nob_cmd_append(cmd, "./da-test");
+	return nob_cmd_run_sync_and_reset(cmd);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -82,7 +97,7 @@ main(int argc, char **argv)
 
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
-	if (!sample(cmd) || !xlib(cmd) || !sb_dot_c(cmd) || !sb_test(cmd)) {
+	if (!sample(cmd) || !xlib(cmd) || !sb_dot_c(cmd) || !sb_test(cmd) || !da_test(cmd)) {
 		exit(EXIT_FAILURE);
 	}
 }
