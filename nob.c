@@ -5,100 +5,78 @@
 #include "nob.h"
 
 static void
-cc(Nob_Cmd *cmd)
+add_cc_from_env_or(Nob_Cmd *cmd, const char *default_cc)
 {
-	const char *cc = getenv("CC");
-	if (cc == NULL) {
-		cc = "cc";
-	}
-	nob_cmd_append(cmd, cc);
+    static const char *cc = NULL;
+    if (cc == NULL) {
+        cc = getenv("CC");
+    }
+    if (cc == NULL) {
+        cc = default_cc;
+    }
+    nob_cmd_append(cmd, cc);
 }
 
+#define run(cmd, ...) \
+    _run(cmd, \
+         ((const char*[]){__VA_ARGS__}), \
+         (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
 static void
-cflags(Nob_Cmd *cmd)
+_run(Nob_Cmd *cmd, const char **args, size_t count)
 {
-	nob_cmd_append(cmd, "-std=c17");
-	nob_cmd_append(cmd, "-g");
-	nob_cmd_append(cmd, "-pedantic");
-	nob_cmd_append(cmd, "-Wall", "-Wextra");
-	nob_cmd_append(cmd, "-Werror");
+    if (count < 1) {
+        fprintf(stderr, "[ERROR] run should be called with at least two argument: cmd and program\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        nob_cmd_append(cmd, args[i]);
+    }
+    if (!nob_cmd_run_sync_and_reset(cmd)) {
+        exit(EXIT_FAILURE);
+    }
 }
 
-static bool
-xlib(Nob_Cmd *cmd)
+#define compile(cmd, output, ...) \
+    _compile(cmd, output, \
+             ((const char*[]){__VA_ARGS__}), \
+             (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
+#ifdef _WIN32
+static void
+_compile(Nob_Cmd *cmd, const char *output, const char **args, size_t count)
 {
-#ifndef __APPLE__
-	cc(cmd);
-	cflags(cmd);
-	nob_cc_output(cmd, "xlib");
-	nob_cc_inputs(cmd, "xlib.c");
-	nob_cmd_append(cmd, "-lX11");
-	return nob_cmd_run_sync_and_reset(cmd);
+    add_cc_from_env_or(cmd, "cl");
+    nob_cmd_append(cmd, "/nologo", "/std:c17");
+    nob_cmd_append(cmd, "/Wall");
+    // disabled by default, there are warnings I do not know what they means
+    // nob_cmd_append(cmd, "/WX");
+    nob_cc_output(cmd, output);
+    for (size_t i = 0; i < count; i++) {
+        nob_cmd_append(cmd, args[i]);
+    }
+    if (!nob_cmd_run_sync_and_reset(cmd)) {
+        exit(EXIT_FAILURE);
+    }
+}
 #else
-	nob_log(NOB_WARNING, "xlib won't build on macos");
-	return true;
-#endif // __apple__
-}
-
-static bool
-sample(Nob_Cmd *cmd)
+static void
+_compile(Nob_Cmd *cmd, const char *output, const char **args, size_t count)
 {
-	cc(cmd);
-	cflags(cmd);
-	nob_cc_output(cmd, "sample");
-	nob_cc_inputs(cmd, "sample.c");
-	return nob_cmd_run_sync_and_reset(cmd);
+    add_cc_from_env_or(cmd, "cc");
+    nob_cmd_append(cmd, "-std=c17", "-pedantic",
+                   "-g",
+                   "-Wall",
+                   "-Wextra",
+                   "-Werror");
+    nob_cc_output(cmd, output);
+    for (size_t i = 0; i < count; i++) {
+        nob_cmd_append(cmd, args[i]);
+    }
+    if (!nob_cmd_run_sync_and_reset(cmd)) {
+        exit(EXIT_FAILURE);
+    }
 }
-
-static bool
-cc_dot_c(Nob_Cmd *cmd)
-{
-	cc(cmd);
-	cflags(cmd);
-	nob_cmd_append(cmd, "-fsyntax-only");
-	nob_cc_inputs(cmd, "cc.c");
-	return nob_cmd_run_sync_and_reset(cmd);
-}
-
-static bool
-cc_test(Nob_Cmd *cmd)
-{
-	cc(cmd);
-	cflags(cmd);
-	nob_cc_output(cmd, "cc-test");
-	nob_cc_inputs(cmd, "sb.c", "cc.c", "cc-test.c");
-	if (!nob_cmd_run_sync_and_reset(cmd)) {
-		return false;
-	}
-
-	nob_cmd_append(cmd, "./cc-test");
-	return nob_cmd_run_sync_and_reset(cmd);
-}
-
-static bool
-sb_dot_c(Nob_Cmd *cmd)
-{
-	cc(cmd);
-	cflags(cmd);
-	nob_cmd_append(cmd, "-fsyntax-only");
-	nob_cc_inputs(cmd, "sb.c");
-	return nob_cmd_run_sync_and_reset(cmd);
-}
-
-static bool
-sb_test(Nob_Cmd *cmd)
-{
-	cc(cmd);
-	cflags(cmd);
-	nob_cc_output(cmd, "sb-test");
-	nob_cc_inputs(cmd, "sb.c", "sb-test.c");
-	if (!nob_cmd_run_sync_and_reset(cmd)) {
-		return false;
-	}
-
-	nob_cmd_append(cmd, "./sb-test");
-	return nob_cmd_run_sync_and_reset(cmd);
-}
+#endif // _WIN32
 
 int
 main(int argc, char **argv)
@@ -107,9 +85,20 @@ main(int argc, char **argv)
 
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
-	if (!sample(cmd) || !xlib(cmd) ||
-	    !sb_dot_c(cmd) || !sb_test(cmd) ||
-	    !cc_dot_c(cmd) || !cc_test(cmd)) {
-		exit(EXIT_FAILURE);
+	compile(cmd, "sample", "sample.c");
+	compile(cmd, "sb-test", "sb.c", "sb-test.c");
+	compile(cmd, "cc-test", "sb.c", "cc.c", "cc-test.c");
+#ifdef __APPLE__
+	nob_log(NOB_WARNING, "xlib only compiles on linux");
+#else
+	compile(cmd, "xlib", "xlib.c", "-lX11");
+#endif // __APPLE__
+
+	for (int i = 0; i < argc; i++) {
+		if (strcmp(argv[i], "test") == 0) {
+			run(cmd, "./sample");
+			run(cmd, "./sb-test");
+			run(cmd, "./cc-test");
+		}
 	}
 }

@@ -25,19 +25,23 @@ jobs:
           - clang
         include:
           - os: ubuntu-latest
-            install: sudo apt-get install -y libx11-dev
+            install: sudo apt-get update && sudo apt-get install -y libx11-dev
 
     env:
       CC: ${{ matrix.cc }}
-      CFLAGS: -Werror
+      CFLAGS: -Wall -Wextra -Werror
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: ${{ matrix.install }}
+
     - name: Bootstrap nob
       run: $CC $CFLAGS -o nob nob.c
 
     - name: Build
       run: ./nob
+
+    - name: Run Tests
+      run: ./nob test
