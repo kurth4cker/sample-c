@@ -88,11 +88,11 @@ main(int argc, char **argv)
 	compile(cmd, "sample", "sample.c");
 	compile(cmd, "sb-test", "sb.c", "sb-test.c");
 	compile(cmd, "cc-test", "sb.c", "cc.c", "cc-test.c");
-#ifdef __APPLE__
-	nob_log(NOB_WARNING, "xlib only compiles on linux");
-#else
+#ifdef __linux__
 	compile(cmd, "xlib", "xlib.c", "-lX11");
-#endif // __APPLE__
+#else
+	nob_log(NOB_WARNING, "xlib only compiles on linux");
+#endif // __linux__
 
 	for (int i = 0; i < argc; i++) {
 		if (strcmp(argv[i], "test") == 0) {

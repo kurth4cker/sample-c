@@ -6,8 +6,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include <unistd.h>
-#include <sys/wait.h>
+#ifdef _POSIX_C_SOURCE
+#endif
 
 #include "cc.h"
 #include "sb.h"
@@ -141,7 +141,6 @@ static bool cc_cmd__init_if_needed(Cc_Cmd *cmd)
     return true;
 }
 
-
 static const char *cc__cmd_render(const Cc_Cmd *cmd)
 {
     Sb sb = { 0 };
@@ -266,6 +265,10 @@ char **cc__cmd_to_arg_array(const Cc_Cmd *cmd)
     return result;
 }
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#include <sys/wait.h>
+
 bool cc_cmd_run(Cc_Cmd *cmd)
 {
     cc_cmd__init_if_needed(cmd);
@@ -300,3 +303,6 @@ bool cc_cmd_run(Cc_Cmd *cmd)
     }
     return true;
 }
+#elif defined(_WIN32)
+// cmd_run is not supported on Windows
+#endif
