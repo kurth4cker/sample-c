@@ -86,8 +86,7 @@ main(int argc, char **argv)
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
 	compile(cmd, "sample", "sample.c");
-	compile(cmd, "sb-test", "sb.c", "sb-test.c");
-	compile(cmd, "cc-test", "sb.c", "cc.c", "cc-test.c");
+	compile(cmd, "cc-test", "cc.c", "cc-test.c");
 #ifdef __linux__
 	compile(cmd, "xlib", "xlib.c", "-lX11");
 #else
@@ -97,7 +96,6 @@ main(int argc, char **argv)
 	for (int i = 0; i < argc; i++) {
 		if (strcmp(argv[i], "test") == 0) {
 			run(cmd, "./sample");
-			run(cmd, "./sb-test");
 			run(cmd, "./cc-test");
 		}
 	}

@@ -10,7 +10,6 @@
 #endif
 
 #include "cc.h"
-#include "sb.h"
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 
@@ -139,18 +138,6 @@ static bool cc_cmd__init_if_needed(Cc_Cmd *cmd)
         return cc__cmd_append1(cmd, cmd->cc->name);
     }
     return true;
-}
-
-static const char *cc__cmd_render(const Cc_Cmd *cmd)
-{
-    Sb sb = { 0 };
-    for (size_t i = 0; i < cmd->size; i++) {
-        sb_append_str(&sb, cmd->args[i]);
-        if (i != cmd->size - 1) {
-            sb_append_char(&sb, ' ');
-        }
-    }
-    return sb_cstr(&sb);
 }
 
 bool cc_cmd__flags(Cc_Cmd *cmd, ...)
@@ -287,7 +274,8 @@ bool cc_cmd_run(Cc_Cmd *cmd)
         fprintf(stderr, "[ERROR] cannot exec CMD\n");
         exit(EXIT_FAILURE);
     } else {
-        fprintf(stderr, "[INFO] CMD: %s\n", cc__cmd_render(cmd));
+        // fprintf(stderr, "[INFO] CMD: %s\n", cc__cmd_render(cmd));
+        fprintf(stderr, "[TODO] %s\n", "implement cmd rendering");
         int status;
         if (waitpid(pid, &status, 0) == -1) {
             fprintf(stderr, "[ERROR] cannot wait for child process\n");
