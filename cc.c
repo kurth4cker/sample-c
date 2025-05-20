@@ -274,8 +274,8 @@ bool cc_cmd_run(Cc_Cmd *cmd)
         fprintf(stderr, "[ERROR] cannot exec CMD\n");
         exit(EXIT_FAILURE);
     } else {
+        // TODO: implement cmd logging
         // fprintf(stderr, "[INFO] CMD: %s\n", cc__cmd_render(cmd));
-        fprintf(stderr, "[TODO] %s\n", "implement cmd rendering");
         int status;
         if (waitpid(pid, &status, 0) == -1) {
             fprintf(stderr, "[ERROR] cannot wait for child process\n");
