@@ -74,7 +74,7 @@ jobs:
 
   self-hosted-runner:
     name: 'Self Hosted Github Runner Test'
-    runs-on: void-latest
+    runs-on: self-hosted
 
     env:
       CC: cc
