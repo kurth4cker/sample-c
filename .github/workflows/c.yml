@@ -71,3 +71,23 @@ jobs:
 
     - name: Run Tests
       run: ./nob test
+
+  self-hosted-runner:
+    name: 'Self Hosted Github Runner Test'
+    runs-on: self-hosted
+
+    env:
+      CC: cc
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Bootstrap nob
+      run: $CC -o nob nob.c
+
+    - name: Build
+      run: ./nob
+
+    - name: Run Tests
+      run: ./nob test
