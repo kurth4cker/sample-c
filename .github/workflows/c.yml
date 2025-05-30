@@ -41,10 +41,14 @@ jobs:
       run: ${{ matrix.install }}
 
     - name: Bootstrap nob
-      run: $CC $CFLAGS -o nob nob.c
+      run: |
+        $CC $CFLAGS -o nob nob.c
+        cd raylib && $CC $CFLAGS -o nob nob.c
 
     - name: Build
-      run: ./nob
+      run: |
+        ./nob
+        cd raylib && ./nob
 
     - name: Run Tests
       run: ./nob test
