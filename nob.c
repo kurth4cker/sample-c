@@ -99,4 +99,13 @@ main(int argc, char **argv)
 			run(cmd, "./cc-test");
 		}
 	}
+
+	// raylib
+	if (!nob_set_current_dir("raylib")) {
+		exit(EXIT_FAILURE);
+	}
+	nob_log(NOB_INFO, "CD: raylib");
+	run(cmd, "cc", "-Wall", "-Werror", "-g", "-o", "nob", "nob.c");
+	// compile(cmd, "nob", "nob.c");
+	run(cmd, "./nob");
 }
