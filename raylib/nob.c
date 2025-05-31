@@ -22,6 +22,10 @@ int
 main(int argc, char **argv)
 {
 	NOB_GO_REBUILD_URSELF(argc, argv);
+	#ifndef __linux__
+	nob_log(NOB_WARNING, "raylib example only builds on linux");
+	exit(EXIT_SUCCESS);
+	#endif
 	bool run = false;
 
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
