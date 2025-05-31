@@ -63,12 +63,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Raylib
-      run: |
-        git clone --depth 1 https://github.com/raysan5/raylib.git raylib-code
-        cd raylib-code/src
-        make
-        sudo make install
+    # - name: Setup Raylib
+    #   run: |
+    #     git clone --depth 1 https://github.com/raysan5/raylib.git raylib-code
+    #     cd raylib-code/src
+    #     make
+    #     sudo make install
 
     - name: Bootstrap nob
       run: $CC $CFLAGS -o nob nob.c

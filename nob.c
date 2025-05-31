@@ -63,7 +63,10 @@ static void
 _compile(Nob_Cmd *cmd, const char *output, const char **args, size_t count)
 {
 	add_cc_from_env_or(cmd, "cc");
-	nob_cmd_append(cmd, "-std=c17", "-pedantic",
+	nob_cmd_append(cmd, "-std=c17",
+		#ifdef __unix__
+			"-D_POSIX_C_SOURCE=200809L",
+		#endif
 			"-g",
 			"-Wall",
 			"-Wextra",
@@ -83,6 +86,13 @@ main(int argc, char **argv)
 {
 	NOB_GO_REBUILD_URSELF_PLUS(argc, argv, "nob.h");
 
+	bool test = false;
+	for (int i = 0; i < argc; i++) {
+		if (strcmp(argv[i], "test") == 0) {
+			test = true;
+		}
+	}
+
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
 	compile(cmd, "sample", "sample.c");
@@ -93,19 +103,18 @@ main(int argc, char **argv)
 	nob_log(NOB_WARNING, "xlib only compiles on linux");
 #endif // __linux__
 
-	for (int i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "test") == 0) {
-			run(cmd, "./sample");
-			run(cmd, "./cc-test");
-		}
+	if (test) {
+		run(cmd, "./sample");
+		run(cmd, "./cc-test");
 	}
 
 	// raylib
-	if (!nob_set_current_dir("raylib")) {
-		exit(EXIT_FAILURE);
+	if (!test) {
+		if (!nob_set_current_dir("raylib")) {
+			exit(EXIT_FAILURE);
+		}
+		nob_log(NOB_INFO, "CD: raylib");
+		compile(cmd, "nob", "nob.c");
+		run(cmd, "./nob");
 	}
-	nob_log(NOB_INFO, "CD: raylib");
-	run(cmd, "cc", "-Wall", "-Werror", "-g", "-o", "nob", "nob.c");
-	// compile(cmd, "nob", "nob.c");
-	run(cmd, "./nob");
 }
