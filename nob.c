@@ -96,7 +96,6 @@ main(int argc, char **argv)
 	Nob_Cmd *cmd = &(Nob_Cmd){ 0 };
 
 	compile(cmd, "sample", "sample.c");
-	compile(cmd, "cc-test", "cc.c", "cc-test.c");
 #ifdef __linux__
 	compile(cmd, "xlib", "xlib.c", "-lX11");
 #else
@@ -105,7 +104,6 @@ main(int argc, char **argv)
 
 	if (test) {
 		run(cmd, "./sample");
-		run(cmd, "./cc-test");
 	}
 
 	// raylib
