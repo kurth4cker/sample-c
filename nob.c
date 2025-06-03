@@ -107,12 +107,10 @@ main(int argc, char **argv)
 	}
 
 	// raylib
-	if (!test) {
-		if (!nob_set_current_dir("raylib")) {
-			exit(EXIT_FAILURE);
-		}
-		nob_log(NOB_INFO, "CD: raylib");
-		compile(cmd, "nob", "nob.c");
-		run(cmd, "./nob");
+	if (!nob_set_current_dir("raylib")) {
+		exit(EXIT_FAILURE);
 	}
+	nob_log(NOB_INFO, "CD: raylib");
+	compile(cmd, "nob", "nob.c");
+	run(cmd, "./nob");
 }
