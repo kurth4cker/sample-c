@@ -37,8 +37,8 @@ jobs:
 
     - name: Setup Raylib
       run: |
-        git clone --depth 1 https://github.com/raysan5/raylib.git raylib-code
-        cd raylib-code/src
+        git clone --depth 1 https://github.com/raysan5/raylib.git raylib/vendor/raylib
+        cd raylib/vendor/raylib/src
         make
         sudo make install
 
